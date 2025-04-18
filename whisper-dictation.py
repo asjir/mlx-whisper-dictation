@@ -17,17 +17,8 @@ class SpeechTranscriber:
         result = mlx_whisper.transcribe(
             audio_data, language=language, 
         )
-        is_first = True
-        for element in result["text"]:
-            if is_first and element == " ":
-                is_first = False
-                continue
-
-            try:
-                self.pykeyboard.type(element)
-                time.sleep(0.0025)
-            except:
-                pass
+        new_text = result["text"].lstrip()  # type: ignore
+        self.pykeyboard.type(new_text)
 
 class Recorder:
     def __init__(self, transcriber):
