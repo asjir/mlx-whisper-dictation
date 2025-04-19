@@ -8,6 +8,7 @@ from pynput import keyboard
 import platform
 from mlx_whisper.load_models import load_model
 import mlx_whisper
+import pyperclip
 
 class SpeechTranscriber:
     def __init__(self):
@@ -17,17 +18,24 @@ class SpeechTranscriber:
         result = mlx_whisper.transcribe(
             audio_data, language=language, 
         )
-        is_first = True
-        for element in result["text"]:
-            if is_first and element == " ":
-                is_first = False
-                continue
-
-            try:
-                self.pykeyboard.type(element)
-                time.sleep(0.0025)
-            except:
-                pass
+        new_text = result["text"].lstrip()  # type: ignore
+        
+        try:
+            saved_clipboard = pyperclip.paste()
+            pyperclip.copy(new_text)
+            time.sleep(0.05)
+            
+            with self.pykeyboard.pressed(keyboard.Key.cmd):
+                self.pykeyboard.press('v')
+                self.pykeyboard.release('v')
+            
+            time.sleep(0.05)
+            
+            pyperclip.copy(saved_clipboard)
+            
+        except Exception as e:
+            print(f"Clipboard operation failed: {e}. Falling back to typing.")
+            self.pykeyboard.type(new_text)
 
 class Recorder:
     def __init__(self, transcriber):
