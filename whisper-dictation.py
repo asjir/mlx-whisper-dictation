@@ -242,7 +242,13 @@ if __name__ == "__main__":
     args = parse_args()
 
     print("Loading model...")
-    model_name = args.model_name
+    model_name = args.model_name 
+    if model_name is None: 
+        if "en" in args.language:
+            model_name = "mlx-community/distil-whisper-medium.en"
+        else:
+            model_name = "mlx-community/whisper-large-v3-turbo-q4"
+
     model = load_model(model_name)
     print(f"{model_name} model loaded")
 
