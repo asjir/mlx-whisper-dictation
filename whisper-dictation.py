@@ -1,4 +1,5 @@
 import argparse
+import os
 import time
 import threading
 import pyaudio
@@ -9,6 +10,9 @@ import platform
 from mlx_whisper.load_models import load_model
 import mlx_whisper
 import pyperclip
+import json
+import soundfile as sf
+import io
 
 class SpeechTranscriber:
     def __init__(self):
@@ -226,11 +230,14 @@ def parse_args():
     parser.add_argument('-t', '--max_time', type=float, default=30,
                         help='Specify the maximum recording time in seconds. The app will automatically stop recording after this duration. '
                         'Default: 30 seconds.')
+    parser.add_argument('-d', '--directory', type=str, default=None,
+                        help='Specify the directory with the audio files to transcribe. '
+                        'Default: None.')
 
     args = parser.parse_args()
 
     if args.language is not None:
-        args.language = args.language.split(',')
+        args.language = [x.strip() for x in args.language.split(',')]
 
     if args.model_name.endswith('.en') and args.language is not None and any(lang != 'en' for lang in args.language):
         raise ValueError('If using a model ending in .en, you cannot specify a language other than English.')
@@ -244,7 +251,7 @@ if __name__ == "__main__":
     print("Loading model...")
     model_name = args.model_name 
     if model_name is None: 
-        if "en" in args.language:
+        if args.language == ["en"]:
             model_name = "mlx-community/distil-whisper-medium.en"
         else:
             model_name = "mlx-community/whisper-large-v3-turbo-q4"
@@ -254,6 +261,22 @@ if __name__ == "__main__":
 
     transcriber = SpeechTranscriber()
     recorder = Recorder(transcriber)
+
+    if args.directory is not None:
+        files = os.walk(args.directory)
+        for root, dirs, files in files:
+            for file in files:
+                if file.endswith('.wav') or file.endswith('.m4a') or file.endswith('.mp3'):
+                    print(f"Transcribing {file}...")
+                    time_start = time.time()
+                    segments = mlx_whisper.transcribe(os.path.join(root, file), language=args.language[0])
+                    output_file = os.path.join(root, os.path.splitext(file)[0] + '.json')
+                    
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        json.dump(segments, f, ensure_ascii=False, indent=2)
+                    
+                    print(f"Transcription saved to {output_file}, took {(time.time() - time_start):.2f} seconds")
+        exit()
     
     app = StatusBarApp(recorder, args.language, args.max_time)
     if args.k_double_cmd:
